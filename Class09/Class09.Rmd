@@ -1,6 +1,6 @@
 ---
 title: "Class09"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -23,7 +23,7 @@ Lets see the first six rows of data
 head(wisc.df)
 ```
 ```{r}
-View(wisc.df)
+#View(wisc.df)
 ```
 How many samples (i.e. patients) are in this data set? 
 ```{r}
@@ -90,27 +90,31 @@ summary(wisc.pr)
 
 Q4. From your results, what proportion of the original variance is captured by the first principal components (PC1)?
 ```{r}
-looking at the table above 0.4427
+#looking at the table above 0.4427
 
 ```
 
 Q5. How many principal components (PCs) are required to describe at least 70% of the original variance in the data?
-```{r}
+
 you would look at the proportion of variance above and realize you need to sum PC1-PC5 so 5 components
-```
+
 
 Q6. How many principal components (PCs) are required to describe at least 90% of the original variance in the data?
-```{r}
+
 seven 
-```
+
 We need to make our own PCA plot 
 btw 1 is white and 2 is red so +1 gives red
+
+
 ```{r}
 plot( wisc.pr$x[, 1], wisc.pr$x[,2])
 plot(wisc.pr$x[, 1], wisc.pr$x[,2], col=diagnosis+1)
 plot(wisc.pr$x[, 1], wisc.pr$x[,2], col=diagnosis+1,
      xlab= "PC1", ylab="PC2")
 ```
+
+
 What if we wanted to plot PC1 vs PC3?
 ```{r}
 plot(wisc.pr$x[, 1], wisc.pr$x[,3], col=diagnosis+1,
