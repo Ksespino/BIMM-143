@@ -1,0 +1,95 @@
+---
+title: "Class 14: Genome Informatics 1"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Asthma SNPs in MXL Population 
+Read file from Ensemble
+
+http://uswest.ensembl.org/Homo_sapiens/Variation/Sample?db=core;r=17:39895045-39895145;v=rs8067378;vdb=variation;vf=362656008#373531_tablePanel
+
+```{r}
+mxl <- read.csv("373531-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+head(mxl)
+```
+
+```{r}
+table (mxl$Genotype..forward.strand.)
+```
+Percent values 
+
+```{r}
+table (mxl$Genotype..forward.strand.)/ nrow(mxl) * 100
+```
+
+##RNA-seq 
+
+Fastq quality scores 
+Q. Does this first sequence have good quality?
+
+```{r}
+#install.package("sequinr")
+#install.package("gtools")
+q <- "DDDDCDEDCDDDDBBDDDCC@"
+library (seqinr)
+library(gtools)
+asc(s2c(q)) - 33
+
+```
+
+
+
+## Population Scale Analysis
+
+Does the genotype for rs9067378 influence expression of the important asthema linked genes we found?
+```{r}
+rs <- read.table("rs8067378_ENSG00000172057.6.webarchive")
+
+```
+
+```{r}
+summary(rs)
+```
+
+```{r}
+summary (rs[rs[,2] == "A/A",3])
+```
+
+```{r}
+summary(rs[rs[,2] == "G/G",3])
+
+```
+```{r}
+summary(rs[rs[,2] == "A/G",3])
+```
+
+
+
+Some nice figure that shows the distibution of these expresion values? 
+
+```{r}
+p <- boxplot(exp~geno, data=rs, xlab="rs8067378 genotype", ylab="ENSG00000172057.4 (RPKM)", notch=T)
+```
+
+```{r}
+p
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
