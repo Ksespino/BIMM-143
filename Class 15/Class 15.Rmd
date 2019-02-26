@@ -1,0 +1,318 @@
+---
+title: "Class 15"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(BiocInstaller)
+```
+#Import and call countData and colData into R
+```{r}
+counts <- read.csv("airway_scaledcounts.csv", stringsAsFactors = FALSE)
+metadata <-  read.csv("airway_metadata.csv", stringsAsFactors = FALSE)
+```
+
+```{r}
+#Now lets take a preview of each
+head(counts)
+```
+```{r}
+#To access the names of the columns
+colnames(counts)
+```
+```{r}
+metadata$id
+```
+
+
+```{r}
+#to get rid of the column name "ensgene"
+#to determine if the colnames of each data set match... adding "all()"" before colnames checks for all data within 
+colnames(counts)[-1] == metadata$id
+```
+
+```{r}
+head(metadata)
+```
+
+#Toy differential gene expression 
+```{r}
+View(metadata)
+```
+
+Now calculate the mean across the controls 
+
+First line of coding is accessing/finding the desired columns in **counts** correspond to the control conditions (i.e. no drug!). Then we'll calculate the mean count value for each gene.
+
+```{r}
+#First accessing the control data within the dex (drug column) of the metadata set then calling it control.inds
+control.inds <- metadata$dex == "control"
+control.ids <- metadata$id[control.inds]
+
+head(counts[,control.ids])
+
+#ERROR... SRR..509 is actually a treatment drug not a control so it should not be displayed.. its being displayed bc we above coded "TRUE FALSE TRUE FALSE.. " and therefore ensgene was coded true and SRR..508 was coded as false when we did colnames(count) - [1]
+```
+#Now calculate the means
+```{r}
+control <- metadata[metadata[,"dex"]=="control",]
+control.mean <- rowSums( counts[ ,control.ids] )/ ncol(counts[control.ids])
+#control.mean
+
+
+#then to add back the gene names 
+
+names(control.mean) <- counts$ensgene
+head(control.mean) 
+```
+
+#Now lets do the same thing or the drug treated samples (i.e. *treated* columns)
+```{r}
+treated.inds <- metadata$dex == "treated"
+treated.ids <- metadata$id[treated.inds]
+
+head(counts[,treated.ids])
+treated.mean <- rowSums( counts[ ,treated.ids] )/ ncol(counts[treated.ids])
+
+
+names(treated.mean) <- counts$ensgene
+head(treated.mean) 
+```
+
+Combine the mean counts value for control and treated into a new data.frame called meancounts!
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+```
+
+```{r}
+colSums(meancounts)
+```
+
+#Now lets make a scatter plot showing the srug treated vs. non-drug control count values
+
+```{r}
+plot(meancounts$control.mean, meancounts$treated.mean)
+```
+
+#Now argue with the blot to make a logarathmic plot
+#type ?plot.default to get help and read
+```{r}
+plot(meancounts$control.mean, meancounts$treated.mean, log = "xy")
+```
+
+#Now we'll calculate the log2 fold change  and add it to our mean counts to our data.frame
+
+We can find candidate differentially expressed genes by looking for genes with a large change between control and dex-treated samples. We usually look at the log2 of the fold change, because this has better mathematical properties.
+
+Here we calculate log2foldchange, add it to our meancounts data.frame and inspect the results either with the head() or the View() function for example.
+```{r}
+meancounts$log2fc <- log2(meancounts[,"treated.mean"]/meancounts[,"control.mean"])
+head(meancounts)
+
+#negative fold changes means that gene expression goes down whereas positive is gene expression goes up with treatment when looking at the fold change
+```
+
+Test data set
+```{r}
+toy <- c(1,2,0,4,0)
+toy == 0
+which(toy == 0)
+
+```
+
+```{r}
+toy <- meancounts[1:6,]
+toy[,1:2]
+toy[,1:2] == 0
+unique(which(toy[,1:2] == 0, arr.ind = TRUE)[,1])
+```
+
+
+#... Now back to our data... Removing the zero entry genes from meancounts to produce **mycounts**
+```{r}
+zero.vals <- which(meancounts[,1:2]==0, arr.ind=TRUE)
+
+to.rm <- unique(zero.vals[,1])
+mycounts <- meancounts[-to.rm,]
+head(mycounts)
+```
+
+#Now lets set a threshold and determine how many genes above and below
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+```
+
+```{r}
+sum(up.ind)
+```
+```{r}
+sum(down.ind)
+```
+
+
+There are 'sum(up.ind)' number of up-regulated and down regulated genes and 'sum(down.ind)' down regulated genes.
+
+
+```{r}
+head(mycounts[up.ind,])
+```
+
+## Adding annotation data 
+
+Use the **merge()** function to merge annotation data from ensemble
+```{r}
+anno <- read.csv("annotables_grch38.csv")
+head(anno)
+```
+
+```{r}
+mycounts.annotated <- merge(x= mycounts, y= anno, by.x ="row.names", by.y="ensgene")
+head(mycounts.annotated)
+```
+
+#DeSeq2 Analysis
+```{r}
+library(DESeq2)
+citation("DESeq2")
+```
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~dex, 
+                              tidy=TRUE)
+dds
+```
+
+```{r}
+dds <- DESeq(dds)
+```
+
+
+```{r}
+res <- results(dds)
+res
+```
+
+
+```{r}
+summary(res)
+```
+
+```{r}
+res01 <- results(dds, alpha=0.01)
+summary(res01)
+```
+
+
+#Making a volcano plot
+
+```{r}
+mycols <- rep("gray", nrow(res01))
+mycols[abs(res01$log2FoldChange)>2] <- "red"
+
+inds <- (res01$padj <0.01) & (abs(res01$log2FoldChange)>2)
+mycols[inds] <- "blue"
+
+plot(res01$log2FoldChange, -log(res01$padj), col= mycols, ylab="-Log(P-value)", xlab= "Log2(FoldChange)")
+
+abline(v=c(-2.2), col="gray", lty=2)
+abline(h=-log(0.1), col="gray", lty=2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
